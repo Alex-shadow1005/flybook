@@ -20,8 +20,8 @@ function Get(){
 //    echo "1";
     switch($_GET["items"]){
         case "airport":
-            $records = $conn->prepare('SELECT * FROM airports WHERE airport like "%'.$_GET['search'].'%" or code like "%'.$_GET['search'].'%"');
-            $records->execute();
+            $records = $conn->prepare('SELECT * FROM airports WHERE airport LIKE :search OR code LIKE :search');
+            $records->execute(['search' => '%' . $_GET['search'] . '%']);
             $results = $records->fetchAll(PDO::FETCH_ASSOC);
             if(count($results) > 0) {
                 $obj=["status"=>"200","statusDescription"=>"Ok"];
@@ -35,8 +35,8 @@ function Get(){
             echo $jsonObj;
             break;
         case "flights":
-            $records = $conn->prepare('SELECT * FROM flights WHERE substring(date_time_depart,1,10)="'.$_GET['date'].'" or substring(date_time_arriv,1,10)="'.$_GET['date'].'" and airport_from='.$_GET['from'].' and airport_to='.$_GET['to']);
-            $records->execute();
+            $records = $conn->prepare('SELECT * FROM flights WHERE (substring(date_time_depart,1,10) = :date OR substring(date_time_arriv,1,10) = :date) AND airport_from = :from AND airport_to = :to');
+            $records->execute(['date' => $_GET['date'], 'from' => $_GET['from'], 'to' => $_GET['to']]);
             $results = $records->fetchAll(PDO::FETCH_ASSOC);
             if(count($results) > 0) {
                 $obj=["status"=>"200","statusDescription"=>"Ok"];
@@ -54,16 +54,16 @@ function Get(){
 function Login(){
     global $conn;
 //    echo "1";
-    $records = $conn->prepare('SELECT * FROM passengers WHERE email="'.$_GET['email'].'" and password= "'.md5($_GET['pass']).'"');
-    $records->execute();
+    $records = $conn->prepare('SELECT * FROM passengers WHERE email = :email AND password = :pass');
+    $records->execute(['email' => $_GET['email'], 'pass' => md5($_GET['pass'])]);
     $results = $records->fetchAll(PDO::FETCH_ASSOC);
     // var_dump( $results);
     if(count($results) > 0) {
         $token=md5(rand());
-        $sql = "UPDATE passengers SET token='".$token."' where email='".$_GET['email']."'";
+        $sql = "UPDATE passengers SET token = :token WHERE email = :email";
         $stmt = $conn->prepare($sql);
 //        echo $sql;
-        if( $stmt->execute() ) {
+        if( $stmt->execute(['token' => $token, 'email' => $_GET['email']]) ) {
             $results[0]["token"]=$token;
         }
         $obj=["status"=>"200","statusDescription"=>"Ok"];
@@ -80,15 +80,15 @@ function Login(){
 function Book(){
     global $conn;
 
-    $records = $conn->prepare('SELECT * FROM passengers WHERE id="'.($_GET['passenger']).'" and token="'.($_GET['token']).'"');
-    $records->execute();
+    $records = $conn->prepare('SELECT * FROM passengers WHERE id = :id AND token = :token');
+    $records->execute(['id' => $_GET['passenger'], 'token' => $_GET['token']]);
     $results = $records->fetchAll(PDO::FETCH_ASSOC);
     // var_dump( $results);
     if(count($results) > 0) {
-        $sql = "INSERT INTO bookings (passenger, flight,status) VALUES ('" . $_GET['passenger'] . "','" . $_GET['flight'] . "', 'OK')";
+        $sql = "INSERT INTO bookings (passenger, flight, status) VALUES (:passenger, :flight, 'OK')";
         $stmt = $conn->prepare($sql);
 
-        if ($stmt->execute()){
+        if ($stmt->execute(['passenger' => $_GET['passenger'], 'flight' => $_GET['flight']])){
             $obj=["status"=>"200","statusDescription"=>"OK"];
             $jsonObj="[".json_encode($obj)."]";
         }
